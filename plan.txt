@@ -1,0 +1,75 @@
+Giai đoạn 1: Nâng cấp Smart Contract (Ưu tiên hàng đầu)
+Giai đoạn 2: Xây dựng các tính năng giao diện cơ bản
+Giai đoạn 3: Xây dựng Dashboard và tính năng nâng cao
+Giai đoạn 1: Nâng cấp Smart Contract (Backend)
+Mục tiêu của giai đoạn này là sửa các lỗ hổng logic và bổ sung các cấu trúc cần thiết để smart contract có thể hỗ trợ tất cả các workflow.
+
+Bước 1.1: Sửa lỗ hổng "Bác sĩ thêm hồ sơ cho bệnh nhân"
+
+Vấn đề: Hiện tại chỉ bệnh nhân tự thêm hồ sơ cho mình được.
+Hành động: Thêm một hàm mới vào EHR_Certify.sol.
+Hàm đề xuất: function addRecordByDoctor(bytes32 _hash, address _patient) public
+Logic bên trong hàm:
+Kiểm tra require(isVerifiedDoctor[msg.sender] == true): Đảm bảo người gọi phải là một bác sĩ đã được xác minh.
+Gán quyền sở hữu hồ sơ cho bệnh nhân: recordOwner[_hash] = _patient; (thay vì msg.sender).
+Phát sự kiện RecordCertified với _patient là chủ sở hữu.
+Bước 1.2: Bổ sung cấu trúc "Profile"
+
+Vấn đề: Contract chưa có khái niệm về profile (tên, chuyên khoa, v.v.).
+Hành động: Thêm struct và mapping để lưu trữ thông tin profile. Để tiết kiệm chi phí gas, chúng ta sẽ chỉ lưu hash của dữ liệu profile on-chain, còn dữ liệu thật (tên, tuổi...) sẽ được lưu off-chain (ví dụ: trên IPFS hoặc database).
+Cấu trúc đề xuất trong EHR_Certify.sol:
+struct Profile {
+    bytes32 profileHash; // Hash của dữ liệu profile off-chain
+    bool isSet;
+}
+
+mapping(address => Profile) public patientProfiles;
+mapping(address => Profile) public doctorProfiles;
+
+function setPatientProfile(bytes32 _profileHash) public { ... }
+function setDoctorProfile(bytes32 _profileHash) public { ... }
+Bước 1.3: Cập nhật và viết lại Tests
+
+Vấn đề: Các thay đổi trên sẽ làm hỏng các bài test cũ.
+Hành động: Mở file test/test1.js.
+Sửa các test hiện có để phù hợp với logic mới.
+Viết các test case mới cho các hàm addRecordByDoctor và set...Profile.
+Tầm quan trọng: Đây là bước cực kỳ quan trọng để đảm bảo backend hoạt động chính xác.
+Bước 1.4: Triển khai lại Smart Contract
+
+Hành động: Chạy lệnh truffle migrate --reset để triển khai phiên bản contract mới nhất lên blockchain. Sau đó, cập nhật lại file ABI và địa chỉ contract trong frontend.
+Giai đoạn 2: Xây dựng Giao diện cho các tính năng cơ bản (Frontend)
+Sau khi có một backend vững chắc, chúng ta xây dựng giao diện để người dùng có thể sử dụng các tính năng mới.
+
+Bước 2.1: Hoàn thiện quy trình "Upload & Hash"
+
+Hành động: Cập nhật trang certification/page.tsx.
+Thay đổi: Thêm nút "Chọn file". Khi người dùng chọn file, ứng dụng sẽ tự động đọc file, dùng crypto-js để tính hash và điền vào ô nhập liệu. Người dùng chỉ cần nhấn nút "Ghi hash".
+Bước 2.2: Tạo trang cho Bác sĩ thêm hồ sơ
+
+Hành động: Tạo một trang mới, ví dụ doctor/add-record.
+Chức năng: Trang này sẽ có ô nhập địa chỉ ví của bệnh nhân và nút upload file để tạo hash. Nút "Lưu" sẽ gọi hàm addRecordByDoctor mới được tạo ở Giai đoạn 1.
+Bước 2.3: Tạo trang Admin để xác minh Bác sĩ
+
+Hành động: Tạo một trang mới, ví dụ admin/verify-doctor.
+Chức năng: Trang này sẽ kiểm tra nếu người dùng kết nối là owner của contract thì mới hiển thị. Giao diện sẽ có ô nhập địa chỉ ví của bác sĩ và 2 nút "Xác minh" / "Hủy xác minh", tương ứng gọi hàm verifyDoctor và unverifyDoctor.
+Giai đoạn 3: Xây dựng Dashboard và tính năng nâng cao
+Giai đoạn này tập trung vào việc truy vấn và hiển thị dữ liệu một cách thân thiện.
+
+Bước 3.1: Xây dựng cơ chế truy vấn danh sách (Quan trọng)
+
+Vấn đề: Không thể hỏi blockchain "Cho tôi danh sách các hồ sơ mà bác sĩ A có quyền xem".
+Giải pháp: "Indexing sự kiện". Chúng ta cần một cơ chế (có thể là một script đơn giản ở frontend) để quét tất cả các sự kiện RecordCertified và AccessGranted đã xảy ra trên blockchain. Dựa vào đó, frontend có thể tự xây dựng được các danh sách cần thiết.
+Hành động: Sử dụng hàm contract.getPastEvents() của web3.js để lấy dữ liệu lịch sử và xử lý chúng.
+Bước 3.2: Xây dựng Dashboard cho Bệnh nhân và Bác sĩ
+
+Hành động: Tạo các trang dashboard/patient và dashboard/doctor.
+Chức năng: Sử dụng dữ liệu đã lấy ở bước 3.1 để hiển thị:
+Bệnh nhân: Danh sách các hồ sơ của họ, và bác sĩ nào có quyền truy cập từng hồ sơ.
+Bác sĩ: Danh sách các bệnh nhân/hồ sơ mà họ đã được cấp quyền.
+Bước 3.3: Xây dựng Dashboard cho Admin
+
+Hành động: Tạo trang dashboard/admin.
+Chức năng: Hiển thị các số liệu thống kê tổng quan (tổng số bệnh nhân, bác sĩ, hồ sơ...).
+Lộ trình này đảm bảo các vấn đề về logic được giải quyết trước, sau đó mới xây dựng các lớp giao diện và trải nghiệm người dùng lên trên.
+
