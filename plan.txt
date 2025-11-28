@@ -73,3 +73,8 @@ Hành động: Tạo trang dashboard/admin.
 Chức năng: Hiển thị các số liệu thống kê tổng quan (tổng số bệnh nhân, bác sĩ, hồ sơ...).
 Lộ trình này đảm bảo các vấn đề về logic được giải quyết trước, sau đó mới xây dựng các lớp giao diện và trải nghiệm người dùng lên trên.
 
+contract address:    0x7F0b4d716a9302E12D3205463349838c057F57b2
+
+Kiểm thử backend:
+Invoke-WebRequest -Method POST -Uri http://localhost:5000/api/upload -ContentType 'application/json' -Body '{"encryptedData": "dGVzdF9kYXRh", "iv": "dGVzdF9pdg=="}'
+Invoke-WebRequest -Uri http://localhost:5000/api/download/YOUR_FILE_ID
